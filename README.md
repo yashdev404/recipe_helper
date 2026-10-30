@@ -1,4 +1,4 @@
-# Recipe Helper & AI Chef Assistant 🍳✨
+# Recipe Helper & AI Chef Assistant 
 
 [![Android CI Pipeline](https://github.com/username/recipe_helper/actions/workflows/android.yml/badge.svg)](https://github.com/username/recipe_helper/actions)
 ![Android SDK](https://img.shields.io/badge/API-24%2B-brightgreen.svg)
@@ -11,12 +11,12 @@ A production-ready Android application built with **Jetpack Compose**, **Clean A
 
 ## 🌟 Key Features
 
-- 🤖 **AI Chef Assistant:** Enter available pantry ingredients (e.g., *Eggs, Spinach, Cheese*), and the AI Chef will generate a custom recipe with cooking instructions and tips.
-- 🌐 **Online Meal Discovery:** Live REST API integration with **TheMealDB** to fetch, search, and filter global recipes by cuisine and category.
-- 📦 **Offline-First Synchronization:** Room local database caches remote and AI-generated recipes for seamless offline playback.
-- 📱 **Modern Material 3 Design:** Responsive Compose UI, step-by-step cooking progress tracker, and favorite recipe management.
-- 🧪 **Comprehensive Automated Testing:** Unit tested ViewModels and Repositories using **MockK** and **Turbine**.
-- ⚙️ **CI/CD Pipeline:** Automated GitHub Actions workflow running unit tests and debug APK assembly on pull requests.
+-  **AI Chef Assistant:** Enter available pantry ingredients (e.g., *Eggs, Spinach, Cheese*), and the AI Chef will generate a custom recipe with cooking instructions and tips.
+-  **Online Meal Discovery:** Live REST API integration with **TheMealDB** to fetch, search, and filter global recipes by cuisine and category.
+-  **Offline-First Synchronization:** Room local database caches remote and AI-generated recipes for seamless offline playback.
+-  **Modern Material 3 Design:** Responsive Compose UI, step-by-step cooking progress tracker, and favorite recipe management.
+-  **Comprehensive Automated Testing:** Unit tested ViewModels and Repositories using **MockK** and **Turbine**.
+-  **CI/CD Pipeline:** Automated GitHub Actions workflow running unit tests and debug APK assembly on pull requests.
 
 ---
 

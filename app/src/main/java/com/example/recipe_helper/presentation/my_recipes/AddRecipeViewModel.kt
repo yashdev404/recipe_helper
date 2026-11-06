@@ -17,6 +17,7 @@ sealed interface AddRecipeUiState {
     object Idle : AddRecipeUiState
     object Saving : AddRecipeUiState
     object Success : AddRecipeUiState
+    data class LoadedForEdit(val recipe: Recipe) : AddRecipeUiState
     data class Error(val message: String) : AddRecipeUiState
 }
 
@@ -27,6 +28,18 @@ class AddRecipeViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<AddRecipeUiState>(AddRecipeUiState.Idle)
     val uiState: StateFlow<AddRecipeUiState> = _uiState.asStateFlow()
+
+    private var existingRecipe: Recipe? = null
+
+    fun loadRecipeForEditing(recipeId: String) {
+        viewModelScope.launch {
+            val recipe = repository.getRecipeById(recipeId)
+            if (recipe != null) {
+                existingRecipe = recipe
+                _uiState.value = AddRecipeUiState.LoadedForEdit(recipe)
+            }
+        }
+    }
 
     fun saveRecipe(
         title: String,
@@ -46,8 +59,15 @@ class AddRecipeViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.value = AddRecipeUiState.Saving
-            val newRecipe = Recipe(
-                id = System.currentTimeMillis().toString(),
+
+            val recipeId = existingRecipe?.id ?: System.currentTimeMillis().toString()
+            val isFavorite = existingRecipe?.isFavorite ?: false
+            val instructions = existingRecipe?.instructions?.ifEmpty {
+                listOf("Prepare ingredients", "Cook according to recipe steps", "Serve fresh and warm")
+            } ?: listOf("Prepare ingredients", "Cook according to recipe steps", "Serve fresh and warm")
+
+            val updatedRecipe = Recipe(
+                id = recipeId,
                 title = title.trim(),
                 cuisine = cuisine.ifBlank { "General" },
                 difficulty = difficulty,
@@ -57,16 +77,25 @@ class AddRecipeViewModel @Inject constructor(
                 servings = servings.toIntOrNull() ?: 4,
                 calories = calories.toIntOrNull() ?: 350,
                 ingredients = ingredientsList.filter { it.isNotBlank() }.map { Ingredient(name = it.trim()) },
-                instructions = listOf("Prepare ingredients", "Cook according to recipe steps", "Serve fresh and warm"),
+                instructions = instructions,
+                isFavorite = isFavorite,
                 isCustom = true,
-                source = RecipeSource.LOCAL
+                source = existingRecipe?.source ?: RecipeSource.LOCAL,
+                aiTips = existingRecipe?.aiTips
             )
-            repository.addRecipe(newRecipe)
+
+            if (existingRecipe != null) {
+                repository.updateRecipe(updatedRecipe)
+            } else {
+                repository.addRecipe(updatedRecipe)
+            }
+
             _uiState.value = AddRecipeUiState.Success
         }
     }
 
     fun resetState() {
         _uiState.value = AddRecipeUiState.Idle
+        existingRecipe = null
     }
 }

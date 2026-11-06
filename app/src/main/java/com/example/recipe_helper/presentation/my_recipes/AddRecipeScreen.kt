@@ -58,16 +58,10 @@ import com.example.recipe_helper.ui.theme.OrangePrimary
 fun AddRecipeScreen(
     viewModel: AddRecipeViewModel,
     onBackClick: () -> Unit,
-    onRecipeSaved: () -> Unit
+    onRecipeSaved: () -> Unit,
+    recipeId: String? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
-    LaunchedEffect(uiState) {
-        if (uiState is AddRecipeUiState.Success) {
-            viewModel.resetState()
-            onRecipeSaved()
-        }
-    }
 
     var title by remember { mutableStateOf("") }
     var cuisine by remember { mutableStateOf("") }
@@ -81,12 +75,45 @@ fun AddRecipeScreen(
     val ingredients = remember { mutableStateListOf("Fresh Salt & Pepper") }
     val difficulties = listOf("Easy", "Medium", "Hard")
 
+    LaunchedEffect(recipeId) {
+        if (!recipeId.isNullOrBlank()) {
+            viewModel.loadRecipeForEditing(recipeId)
+        }
+    }
+
+    LaunchedEffect(uiState) {
+        when (val state = uiState) {
+            is AddRecipeUiState.Success -> {
+                viewModel.resetState()
+                onRecipeSaved()
+            }
+            is AddRecipeUiState.LoadedForEdit -> {
+                val r = state.recipe
+                title = r.title
+                cuisine = r.cuisine
+                selectedDifficulty = r.difficulty
+                imageUrl = r.imageUrl
+                prepTime = r.prepTimeMinutes.toString()
+                cookTime = r.cookTimeMinutes.toString()
+                servings = r.servings.toString()
+                calories = r.calories.toString()
+                ingredients.clear()
+                if (r.ingredients.isNotEmpty()) {
+                    r.ingredients.forEach { ingredients.add(it.name) }
+                } else {
+                    ingredients.add("Fresh Ingredients")
+                }
+            }
+            else -> {}
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text = "Add Custom Recipe",
+                        text = if (recipeId.isNullOrBlank()) "Add Custom Recipe" else "Edit Recipe ✏️",
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
                         color = Color.Black

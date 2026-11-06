@@ -54,6 +54,10 @@ class RecipeRepositoryImpl @Inject constructor(
         dao.insertRecipe(RecipeEntity.fromRecipe(recipe))
     }
 
+    override suspend fun updateRecipe(recipe: Recipe) {
+        dao.insertRecipe(RecipeEntity.fromRecipe(recipe))
+    }
+
     override suspend fun toggleFavorite(recipe: Recipe) {
         val updated = recipe.copy(isFavorite = !recipe.isFavorite)
         dao.insertRecipe(RecipeEntity.fromRecipe(updated))

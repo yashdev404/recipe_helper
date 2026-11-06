@@ -1,9 +1,15 @@
 package com.example.recipe_helper.presentation.cooking_mode
 
 import android.app.Activity
+import android.content.Intent
+import android.os.Bundle
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
+import android.speech.tts.TextToSpeech
 import android.view.WindowManager
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,10 +28,13 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -60,6 +69,7 @@ import androidx.compose.ui.unit.sp
 import com.example.recipe_helper.domain.model.Recipe
 import com.example.recipe_helper.ui.theme.OrangePrimary
 import kotlinx.coroutines.delay
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,10 +97,129 @@ fun CookingModeScreen(
     val totalSteps = steps.size
     val currentStepText = steps[currentStepIndex]
 
+    // TextToSpeech Engine Initialization
+    var tts: TextToSpeech? by remember { mutableStateOf(null) }
+    var isTtsReady by remember { mutableStateOf(false) }
+
+    DisposableEffect(context) {
+        var ttsEngine: TextToSpeech? = null
+        ttsEngine = TextToSpeech(context) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                ttsEngine?.language = Locale.US
+                isTtsReady = true
+            }
+        }
+        tts = ttsEngine
+
+        onDispose {
+            ttsEngine.stop()
+            ttsEngine.shutdown()
+        }
+    }
+
+    fun speakCurrentStep() {
+        if (isTtsReady) {
+            tts?.stop()
+            tts?.speak("Step ${currentStepIndex + 1}. $currentStepText", TextToSpeech.QUEUE_FLUSH, null, "step_tts")
+        }
+    }
+
+    // Voice Command Speech Recognizer Setup
+    var isVoiceListening by remember { mutableStateOf(false) }
+    var voiceFeedbackText by remember { mutableStateOf("") }
+    var speechRecognizer: SpeechRecognizer? by remember { mutableStateOf(null) }
+
+    DisposableEffect(context) {
+        val recognizer = SpeechRecognizer.createSpeechRecognizer(context)
+        speechRecognizer = recognizer
+
+        val listener = object : RecognitionListener {
+            override fun onReadyForSpeech(params: Bundle?) {
+                voiceFeedbackText = "Listening for 'Next', 'Back', 'Repeat'..."
+            }
+            override fun onBeginningOfSpeech() {}
+            override fun onRmsChanged(rmsdB: Float) {}
+            override fun onBufferReceived(buffer: ByteArray?) {}
+            override fun onEndOfSpeech() {}
+            override fun onError(error: Int) {
+                if (isVoiceListening) {
+                    voiceFeedbackText = "Listening..."
+                    // Restart listening on timeout
+                    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                        putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+                    }
+                    recognizer.startListening(intent)
+                }
+            }
+
+            override fun onResults(results: Bundle?) {
+                val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                val spoken = matches?.firstOrNull()?.lowercase(Locale.getDefault()) ?: ""
+
+                when {
+                    spoken.contains("next") || spoken.contains("forward") || spoken.contains("done") -> {
+                        if (currentStepIndex < totalSteps - 1) {
+                            currentStepIndex += 1
+                            voiceFeedbackText = "Command: Next Step ✓"
+                        } else {
+                            voiceFeedbackText = "Last step reached!"
+                        }
+                    }
+                    spoken.contains("back") || spoken.contains("previous") || spoken.contains("last") -> {
+                        if (currentStepIndex > 0) {
+                            currentStepIndex -= 1
+                            voiceFeedbackText = "Command: Previous Step ✓"
+                        }
+                    }
+                    spoken.contains("repeat") || spoken.contains("read") || spoken.contains("again") || spoken.contains("speak") -> {
+                        speakCurrentStep()
+                        voiceFeedbackText = "Reading Step Out Loud 🔊"
+                    }
+                    else -> {
+                        voiceFeedbackText = "Heard '$spoken' (Say 'Next', 'Back', or 'Repeat')"
+                    }
+                }
+
+                if (isVoiceListening) {
+                    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                        putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+                    }
+                    recognizer.startListening(intent)
+                }
+            }
+
+            override fun onPartialResults(partialResults: Bundle?) {}
+            override fun onEvent(eventType: Int, params: Bundle?) {}
+        }
+
+        recognizer.setRecognitionListener(listener)
+
+        onDispose {
+            recognizer.destroy()
+        }
+    }
+
+    fun toggleVoiceListening() {
+        if (!isVoiceListening) {
+            isVoiceListening = true
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+            }
+            speechRecognizer?.startListening(intent)
+        } else {
+            isVoiceListening = false
+            voiceFeedbackText = ""
+            speechRecognizer?.stopListening()
+        }
+    }
+
     // Automated timer detection in step text
     val detectedMinutes = remember(currentStepText) {
         val regex = Regex("(\\d+)\\s*(min|minute|mins)")
-        val match = regex.find(currentStepText.lowercase())
+        val match = regex.find(currentStepText.lowercase(Locale.getDefault()))
         match?.groupValues?.get(1)?.toLongOrNull() ?: 0L
     }
 
@@ -130,6 +259,12 @@ fun CookingModeScreen(
                         Icon(imageVector = Icons.Default.Close, contentDescription = "Close", tint = Color.Black)
                     }
                 },
+                actions = {
+                    // Speak Step Button
+                    IconButton(onClick = { speakCurrentStep() }) {
+                        Icon(imageVector = Icons.Default.VolumeUp, contentDescription = "Read Step", tint = OrangePrimary)
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
         },
@@ -142,7 +277,7 @@ fun CookingModeScreen(
                 .padding(20.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Step Progress Bar
+            // Voice Control Feedback Bar
             Column {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -155,10 +290,41 @@ fun CookingModeScreen(
                         fontWeight = FontWeight.Bold,
                         color = OrangePrimary
                     )
+
+                    // Voice Command Toggle
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = if (isVoiceListening) Color(0xFF4CAF50) else Color(0xFFE0E0E0),
+                        modifier = Modifier.clickable { toggleVoiceListening() }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = if (isVoiceListening) Icons.Default.Mic else Icons.Default.MicOff,
+                                contentDescription = "Voice Control",
+                                tint = if (isVoiceListening) Color.White else Color.DarkGray,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (isVoiceListening) "Voice Active" else "Voice Control",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isVoiceListening) Color.White else Color.DarkGray
+                            )
+                        }
+                    }
+                }
+
+                if (voiceFeedbackText.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "${((currentStepIndex + 1).toFloat() / totalSteps * 100).toInt()}% Done",
+                        text = voiceFeedbackText,
                         fontSize = 12.sp,
-                        color = Color.Gray
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF2E7D32)
                     )
                 }
 
@@ -182,7 +348,7 @@ fun CookingModeScreen(
                 elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp)
+                    .padding(vertical = 12.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp),
@@ -203,7 +369,7 @@ fun CookingModeScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
                         text = currentStepText,
@@ -216,7 +382,7 @@ fun CookingModeScreen(
 
                     // Step Timer Box if timer detected
                     if (timerTotalSeconds > 0) {
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
                         Surface(
                             shape = RoundedCornerShape(16.dp),
                             color = Color(0xFFFFF3E0),
@@ -232,7 +398,7 @@ fun CookingModeScreen(
                                     val minutes = timerRemainingSeconds / 60
                                     val seconds = timerRemainingSeconds % 60
                                     Text(
-                                        text = String.format("%02d:%02d", minutes, seconds),
+                                        text = String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds),
                                         fontSize = 28.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color(0xFFE65100)

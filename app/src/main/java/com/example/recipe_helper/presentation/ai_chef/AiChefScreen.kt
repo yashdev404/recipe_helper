@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -52,13 +53,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.recipe_helper.domain.model.Ingredient
 import com.example.recipe_helper.domain.model.Recipe
+import com.example.recipe_helper.domain.model.RecipeSource
 import com.example.recipe_helper.presentation.common.RecipeCard
 import com.example.recipe_helper.ui.theme.OrangePrimary
+import com.example.recipe_helper.ui.theme.Recipe_HelperTheme
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AiChefScreen(
     viewModel: AiChefViewModel,
@@ -66,6 +70,22 @@ fun AiChefScreen(
     onRecipeClick: (Recipe) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    AiChefScreen(
+        uiState = uiState,
+        onGenerateRecipe = { ingredients -> viewModel.generateRecipe(ingredients) },
+        onBackClick = onBackClick,
+        onRecipeClick = onRecipeClick
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+fun AiChefScreen(
+    uiState: AiChefUiState,
+    onGenerateRecipe: (List<String>) -> Unit,
+    onBackClick: () -> Unit,
+    onRecipeClick: (Recipe) -> Unit
+) {
     var ingredientInput by remember { mutableStateOf("") }
     val ingredients = remember { mutableStateListOf("Eggs", "Spinach", "Tomatoes", "Cheese") }
 
@@ -116,52 +136,7 @@ fun AiChefScreen(
                 .padding(horizontal = 20.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // AI Chef Banner
-            Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = OrangePrimary.copy(alpha = 0.12f),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(OrangePrimary),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AutoAwesome,
-                            contentDescription = "AI",
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(14.dp))
-
-                    Column {
-                        Text(
-                            text = "Smart Recipe Suggestions",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black
-                        )
-                        Text(
-                            text = "Tell us what ingredients you have, and AI Chef will craft a custom recipe instantly!",
-                            fontSize = 12.sp,
-                            color = Color.DarkGray
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Ingredient Input Section
             Text(
@@ -181,7 +156,9 @@ fun AiChefScreen(
                     value = ingredientInput,
                     onValueChange = { ingredientInput = it },
                     placeholder = { Text("e.g. Chicken, Basil, Mushrooms", fontSize = 14.sp) },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .widthIn(max = 488.dp)
+                        .weight(1f),
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
@@ -256,7 +233,7 @@ fun AiChefScreen(
             // Generate Button
             Button(
                 onClick = {
-                    viewModel.generateRecipe(ingredients)
+                    onGenerateRecipe(ingredients)
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -333,5 +310,42 @@ fun AiChefScreen(
                 else -> {}
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AiChefScreenPreview() {
+    Recipe_HelperTheme {
+        AiChefScreen(
+            uiState = AiChefUiState.Success(
+                generatedRecipe = Recipe(
+                    id = "sample_ai_1",
+                    title = "Spinach & Cheese Omelette",
+                    cuisine = "Breakfast",
+                    difficulty = "Easy",
+                    imageUrl = "",
+                    prepTimeMinutes = 5,
+                    cookTimeMinutes = 10,
+                    servings = 2,
+                    calories = 280,
+                    proteinGrams = 18,
+                    ingredients = listOf(
+                        Ingredient("Eggs", "3"),
+                        Ingredient("Spinach", "1 cup"),
+                        Ingredient("Cheese", "50g")
+                    ),
+                    instructions = listOf(
+                        "Whisk eggs in a bowl.",
+                        "Sauté spinach in a pan until wilted.",
+                        "Pour eggs over spinach, add cheese, and fold."
+                    ),
+                    source = RecipeSource.AI
+                )
+            ),
+            onGenerateRecipe = {},
+            onBackClick = {},
+            onRecipeClick = {}
+        )
     }
 }

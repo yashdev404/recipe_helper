@@ -67,6 +67,7 @@ object ScreenRoute {
     const val MY_RECIPES = "my_recipes"
     const val PROFILE = "profile"
     const val ADD_RECIPE = "add_recipe"
+    const val EDIT_RECIPE = "edit_recipe"
     const val DETAIL = "detail"
     const val COOKING_MODE = "cooking_mode"
     const val GROCERY = "grocery"
@@ -257,6 +258,25 @@ fun AppNavGraph(
                         onBackClick = { navController.popBackStack() },
                         onStartCookingClick = { recipe ->
                             navController.navigate("${ScreenRoute.COOKING_MODE}/${recipe.id}")
+                        },
+                        onEditClick = { recipe ->
+                            navController.navigate("${ScreenRoute.EDIT_RECIPE}/${recipe.id}")
+                        }
+                    )
+                }
+
+                composable(
+                    route = "${ScreenRoute.EDIT_RECIPE}/{recipeId}",
+                    arguments = listOf(navArgument("recipeId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val recipeId = backStackEntry.arguments?.getString("recipeId") ?: ""
+                    val viewModel: AddRecipeViewModel = hiltViewModel()
+                    AddRecipeScreen(
+                        viewModel = viewModel,
+                        recipeId = recipeId,
+                        onBackClick = { navController.popBackStack() },
+                        onRecipeSaved = {
+                            navController.popBackStack()
                         }
                     )
                 }

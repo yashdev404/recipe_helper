@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CheckCircleOutline
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.LocalFireDepartment
@@ -65,7 +66,8 @@ fun RecipeDetailScreen(
     recipeId: String,
     viewModel: DetailViewModel,
     onBackClick: () -> Unit,
-    onStartCookingClick: (Recipe) -> Unit = {}
+    onStartCookingClick: (Recipe) -> Unit = {},
+    onEditClick: (Recipe) -> Unit = {}
 ) {
     LaunchedEffect(recipeId) {
         viewModel.loadRecipe(recipeId)
@@ -133,21 +135,42 @@ fun RecipeDetailScreen(
                             )
                         }
 
-                        // Favorite Button
-                        IconButton(
-                            onClick = { viewModel.toggleFavorite() },
+                        // Action Buttons on Top Right
+                        Row(
                             modifier = Modifier
                                 .padding(16.dp)
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.9f))
-                                .align(Alignment.TopEnd)
+                                .align(Alignment.TopEnd),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(
-                                imageVector = if (recipe.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                contentDescription = "Favorite",
-                                tint = if (recipe.isFavorite) Color.Red else Color.Gray
-                            )
+                            // Edit Recipe Button
+                            IconButton(
+                                onClick = { onEditClick(recipe) },
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.9f))
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit Recipe",
+                                    tint = Color.Black
+                                )
+                            }
+
+                            // Favorite Button
+                            IconButton(
+                                onClick = { viewModel.toggleFavorite() },
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.9f))
+                            ) {
+                                Icon(
+                                    imageVector = if (recipe.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                    contentDescription = "Favorite",
+                                    tint = if (recipe.isFavorite) Color.Red else Color.Gray
+                                )
+                            }
                         }
                     }
 
